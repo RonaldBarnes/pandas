@@ -122,7 +122,9 @@ A~~~~B~~~~C~~~~~~~~~~~~D~~~~~~~~~~~~E
 201162~~~~502.953953~~~173.237159~~~12468.3
 """
     colspecs = [(0, 4), (4, 8), (8, 20), (21, 33), (34, 43)]
-    result = read_fwf(StringIO(data), colspecs=colspecs, delimiter="~")
+    result = read_fwf(
+        StringIO(data), colspecs=colspecs, keep_whitespace=False, whitespace_chars="~"
+    )
 
     expected = DataFrame(
         [
@@ -633,9 +635,7 @@ def test_whitespace_preservation():
     fwf_data = """
  a bbb
  ccdd """
-    result = read_fwf(
-        StringIO(fwf_data), widths=[3, 3], header=header, skiprows=[0], delimiter="\n\t"
-    )
+    result = read_fwf(StringIO(fwf_data), widths=[3, 3], header=header, skiprows=[0])
     expected = read_csv(StringIO(csv_data), header=header)
     tm.assert_frame_equal(result, expected)
 
