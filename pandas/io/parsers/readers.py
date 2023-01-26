@@ -438,7 +438,13 @@ _c_parser_defaults = {
     "float_precision": None,
 }
 
-_fwf_defaults = {"colspecs": "infer", "infer_nrows": 100, "widths": None}
+_fwf_defaults = {
+    "colspecs": "infer",
+    "infer_nrows": 100,
+    "widths": None,
+    "keep_whitespace": True,
+    "whitespace_chars": " \t",
+}
 
 _c_unsupported = {"skipfooter"}
 _python_unsupported = {"low_memory", "float_precision"}
@@ -1235,6 +1241,8 @@ def read_fwf(
     widths: Sequence[int] | None = None,
     infer_nrows: int = 100,
     use_nullable_dtypes: bool | lib.NoDefault = lib.no_default,
+    keep_whitespace: bool | None = True,
+    whitespace_chars: str | None = " \t",
     **kwds,
 ) -> DataFrame | TextFileReader:
     r"""
@@ -1270,6 +1278,14 @@ def read_fwf(
         Whether or not to use nullable dtypes as default when reading data. If
         set to True, nullable dtypes are used for all dtypes that have a nullable
         implementation, even if no nulls are present.
+
+        .. versionadded:: 2.0
+
+    keep_whitespace : bool, default True
+        Preserve or strip whitespace from fields.
+    whitespace_chars : str, default [space] & [tab]
+        If stripping whitespace, allows user to specify which
+        characters to strip (can be any characters).
 
         .. versionadded:: 2.0
 
@@ -1336,6 +1352,8 @@ def read_fwf(
     kwds["infer_nrows"] = infer_nrows
     kwds["engine"] = "python-fwf"
     kwds["use_nullable_dtypes"] = use_nullable_dtypes
+    kwds["keep_whitespace"] = keep_whitespace
+    kwds["whitespace_chars"] = whitespace_chars
     return _read(filepath_or_buffer, kwds)
 
 
