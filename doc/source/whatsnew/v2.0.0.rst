@@ -637,7 +637,8 @@ Deprecations
 - :meth:`Index.holds_integer` has been deprecated. Use :func:`pandas.api.types.infer_dtype` instead (:issue:`50243`)
 - :meth:`Index.is_categorical` has been deprecated. Use :func:`pandas.api.types.is_categorical_dtype` instead (:issue:`50042`)
 - :meth:`Index.is_interval` has been deprecated. Use :func:`pandas.api.types.is_intterval_dtype` instead (:issue:`50042`)
-
+- Deprecated behaviour of ``delimiter`` option in :func:`read_fwf`. Use keep_whitespace or :func:`read_table` instead (:issue:`16772` and :issue:`49832`)
+-
 .. ---------------------------------------------------------------------------
 .. _whatsnew_200.prior_deprecations:
 
