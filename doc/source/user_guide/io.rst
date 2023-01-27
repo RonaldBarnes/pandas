@@ -1397,7 +1397,7 @@ Consider a typical fixed-width data file:
         "ChrisVICBC  0005473D1B      N/A      \n"
         "Dave KAMBC    315395AC        $150.00\n"
    )
-   with open("bar.csv", "w") as f:
+   with open("bar.dat", "w") as f:
        f.write(data1)
 
 In order to parse this file into a ``DataFrame``, we simply need to supply the
@@ -1405,7 +1405,7 @@ column specifications (or widths) to the ``read_fwf`` function along with the fi
 
 .. ipython:: python
 
-   df = pd.read_fwf("bar.csv",
+   df = pd.read_fwf("bar.dat",
         # Column specifications are a list of half-intervals
         # colspecs=[(0,5), (5, 8), (8,10), (11,22), (22,37)],
         widths=[5,3,2,12,15],
@@ -1428,7 +1428,7 @@ specify ``whitespace_chars`` if other than default ([space] and [tab] characters
 
 .. ipython:: python
 
-   df = pd.read_fwf("bar.csv",
+   df = pd.read_fwf("bar.dat",
         # Column specifications are a list of half-intervals
         # colspecs=[(0,5), (5, 8), (8,10), (11,22), (22,37)],
         widths=[5,3,2,12,15],
