@@ -18,7 +18,6 @@ from pandas._libs import lib
 import pandas._libs.missing as libmissing
 from pandas._libs.tslibs import (
     NaT,
-    Period,
     iNaT,
 )
 
@@ -314,10 +313,8 @@ def _isna_string_dtype(values: np.ndarray, inf_as_na: bool) -> npt.NDArray[np.bo
         result = np.zeros(values.shape, dtype=bool)
     else:
 
-        if values.ndim == 1:
+        if values.ndim in {1, 2}:
             result = libmissing.isnaobj(values, inf_as_na=inf_as_na)
-        elif values.ndim == 2:
-            result = libmissing.isnaobj2d(values, inf_as_na=inf_as_na)
         else:
             # 0-D, reached via e.g. mask_missing
             result = libmissing.isnaobj(values.ravel(), inf_as_na=inf_as_na)
@@ -585,6 +582,10 @@ def _array_equivalent_object(left: np.ndarray, right: np.ndarray, strict_nan: bo
                 if "boolean value of NA is ambiguous" in str(err):
                     return False
                 raise
+            except ValueError:
+                # numpy can raise a ValueError if left and right cannot be
+                # compared (e.g. nested arrays)
+                return False
     return True
 
 
@@ -749,10 +750,8 @@ def isna_all(arr: ArrayLike) -> bool:
     if dtype.kind == "f" and isinstance(dtype, np.dtype):
         checker = nan_checker
 
-    elif (
-        (isinstance(dtype, np.dtype) and dtype.kind in ["m", "M"])
-        or isinstance(dtype, DatetimeTZDtype)
-        or dtype.type is Period
+    elif (isinstance(dtype, np.dtype) and dtype.kind in ["m", "M"]) or isinstance(
+        dtype, (DatetimeTZDtype, PeriodDtype)
     ):
         # error: Incompatible types in assignment (expression has type
         # "Callable[[Any], Any]", variable has type "ufunc")

@@ -11,6 +11,7 @@ from pandas import (
     CategoricalDtype,
     DataFrame,
     DatetimeTZDtype,
+    Index,
     Interval,
     IntervalDtype,
     NaT,
@@ -22,7 +23,6 @@ from pandas import (
     option_context,
 )
 import pandas._testing as tm
-from pandas.core.api import UInt64Index
 
 
 def _check_cast(df, v):
@@ -372,10 +372,36 @@ class TestAstype:
     )
     def test_astype_column_metadata(self, dtype):
         # GH#19920
-        columns = UInt64Index([100, 200, 300], name="foo")
+        columns = Index([100, 200, 300], dtype=np.uint64, name="foo")
         df = DataFrame(np.arange(15).reshape(5, 3), columns=columns)
         df = df.astype(dtype)
         tm.assert_index_equal(df.columns, columns)
+
+    @pytest.mark.parametrize("unit", ["Y", "M", "W", "D", "h", "m"])
+    def test_astype_from_object_to_datetime_unit(self, unit):
+        vals = [
+            ["2015-01-01", "2015-01-02", "2015-01-03"],
+            ["2017-01-01", "2017-01-02", "2017-02-03"],
+        ]
+        df = DataFrame(vals, dtype=object)
+        with pytest.raises(TypeError, match="Cannot cast"):
+            df.astype(f"M8[{unit}]")
+
+    @pytest.mark.parametrize("unit", ["Y", "M", "W", "D", "h", "m"])
+    def test_astype_from_object_to_timedelta_unit(self, unit):
+        vals = [
+            ["1 Day", "2 Days", "3 Days"],
+            ["4 Days", "5 Days", "6 Days"],
+        ]
+        df = DataFrame(vals, dtype=object)
+        msg = (
+            r"Cannot convert from timedelta64\[ns\] to timedelta64\[.*\]. "
+            "Supported resolutions are 's', 'ms', 'us', 'ns'"
+        )
+        with pytest.raises(ValueError, match=msg):
+            # TODO: this is ValueError while for DatetimeArray it is TypeError;
+            #  get these consistent
+            df.astype(f"m8[{unit}]")
 
     @pytest.mark.parametrize("dtype", ["M8", "m8"])
     @pytest.mark.parametrize("unit", ["ns", "us", "ms", "s", "h", "m", "D"])
@@ -415,7 +441,7 @@ class TestAstype:
         arr = np.array([[1, 2, 3]], dtype=dtype)
         df = DataFrame(arr)
         ser = df.iloc[:, 0]
-        idx = pd.Index(ser)
+        idx = Index(ser)
         dta = ser._values
 
         if unit in ["ns", "us", "ms", "s"]:
@@ -450,7 +476,7 @@ class TestAstype:
         exp_dta = exp_ser._values
 
         res_index = idx.astype(dtype)
-        exp_index = pd.Index(exp_ser)
+        exp_index = Index(exp_ser)
         assert exp_index.dtype == dtype
         tm.assert_index_equal(res_index, exp_index)
 
@@ -478,7 +504,7 @@ class TestAstype:
         arr = np.array([[1, 2, 3]], dtype=dtype)
         df = DataFrame(arr)
         ser = df.iloc[:, 0]
-        tdi = pd.Index(ser)
+        tdi = Index(ser)
         tda = tdi._values
 
         if unit in ["us", "ms", "s"]:
@@ -671,7 +697,7 @@ class TestAstype:
             pytest.param(
                 ["x", "y", "z"],
                 "string[pyarrow]",
-                marks=td.skip_if_no("pyarrow", min_version="1.0.0"),
+                marks=td.skip_if_no("pyarrow"),
             ),
             (["x", "y", "z"], "category"),
             (3 * [Timestamp("2020-01-01", tz="UTC")], None),
