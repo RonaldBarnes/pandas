@@ -1180,11 +1180,15 @@ class FixedWidthReader(abc.Iterator):
         comment: str | None,
         skiprows: set[int] | None = None,
         infer_nrows: int = 100,
+        keep_whitespace: bool | tuple[True,False] = (True,False),
+        whitespace_chars: str = " \t",
     ) -> None:
         self.f = f
         self.buffer: Iterator | None = None
         self.delimiter = "\r\n" + delimiter if delimiter else "\n\r\t "
         self.comment = comment
+        self.keep_whitespace = keep_whitespace
+        self.whitespace_chars = whitespace_chars
         if colspecs == "infer":
             self.colspecs = self.detect_colspecs(
                 infer_nrows=infer_nrows, skiprows=skiprows
@@ -1209,6 +1213,46 @@ class FixedWidthReader(abc.Iterator):
                     "Each column specification must be "
                     "2 element tuple or list of integers"
                 )
+
+        if isinstance(keep_whitespace, bool):
+            ## Convert boolean to tuple(bool,bool) i.e. (left,right):
+            self.keep_whitespace = (keep_whitespace, keep_whitespace)
+        elif not (
+            isinstance(keep_whitespace, tuple)
+            and len(keep_whitespace) == 2
+            and isinstance(keep_whitespace[0], bool)
+            and isinstance(keep_whitespace[1], bool)
+            ):
+            raise TypeError(
+                "`keep_whitespace` must be type bool (True or False), "
+                "or tuple(bool,bool). "
+                f"input was type {type(self.keep_whitespace).__name__}: "
+                f'"{self.keep_whitespace}"'
+                )
+
+        if delimiter:
+            ## Delimiters in fixed-width files removed:
+            ## use colspecs, widths, or read_table()
+            import warnings
+
+            ## See link regarding fixing anti-patterns & unexpected default behaviour:
+            ## https://github.com/pandas-dev/pandas/pull/49832#discussion_r1030615937
+            ##
+            ## Deprecation warnings ignored by default, show them:
+            warnings.formatwarning = (
+                lambda msg, cat, file, line, args1: f"NOTICE:\n{msg}\n\n"
+                f'{cat}\nFile "{file}", line {line} '
+                "in FixedWidthReader.__init__\n"
+            )
+            warnings.warn(
+                (
+                    "\n\nDelimiters are deprecated in fixed-width files "
+                    + "- use colspecs or widths\n"
+                    + "See `keep_whitespace` in read_fwf(), also see read_table()."
+                ),
+                FutureWarning,
+                stacklevel=2,
+            )
 
     def get_rows(self, infer_nrows: int, skiprows: set[int] | None = None) -> list[str]:
         """
@@ -1281,8 +1325,24 @@ class FixedWidthReader(abc.Iterator):
                 line = next(self.f)  # type: ignore[arg-type]
         else:
             line = next(self.f)  # type: ignore[arg-type]
+
+        line = line.rstrip("\r\n")
+        ## Trim whitespace from left of fields / columns?
+        if self.keep_whitespace[0] is True:
+            ltrim = lambda x: x
+        else:
+            ltrim = lambda x: x.lstrip(self.whitespace_chars)
+        ## Trim whitespace from right of fields / columns?
+        if self.keep_whitespace[1] is True:
+            rtrim = lambda x: x
+        else:
+            rtrim = lambda x: x.rstrip(self.whitespace_chars)
+
         # Note: 'colspecs' is a sequence of half-open intervals.
-        return [line[from_:to].strip(self.delimiter) for (from_, to) in self.colspecs]
+        return [
+            ltrim(rtrim(line[from_:to]))
+            for (from_, to) in self.colspecs
+            ]
 
 
 class FixedWidthFieldParser(PythonParser):
@@ -1295,6 +1355,8 @@ class FixedWidthFieldParser(PythonParser):
         # Support iterators, convert to a list.
         self.colspecs = kwds.pop("colspecs")
         self.infer_nrows = kwds.pop("infer_nrows")
+        self.keep_whitespace = kwds.get("keep_whitespace")
+        self.whitespace_chars = kwds.get("whitespace_chars")
         PythonParser.__init__(self, f, **kwds)
 
     def _make_reader(self, f: IO[str] | ReadCsvBuffer[str]) -> None:
@@ -1305,6 +1367,8 @@ class FixedWidthFieldParser(PythonParser):
             self.comment,
             self.skiprows,
             self.infer_nrows,
+            self.keep_whitespace,
+            self.whitespace_chars,
         )
 
     def _remove_empty_lines(self, lines: list[list[Scalar]]) -> list[list[Scalar]]:

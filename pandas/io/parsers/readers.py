@@ -435,7 +435,13 @@ _c_parser_defaults = {
     "float_precision": None,
 }
 
-_fwf_defaults = {"colspecs": "infer", "infer_nrows": 100, "widths": None}
+_fwf_defaults = {
+    "colspecs": "infer",
+    "infer_nrows": 100,
+    "widths": None,
+    "keep_whitespace": (True,False),
+    "whitespace_chars": " \t",
+}
 
 _c_unsupported = {"skipfooter"}
 _python_unsupported = {"low_memory", "float_precision"}
@@ -1235,6 +1241,8 @@ def read_fwf(
     widths: Sequence[int] | None = None,
     infer_nrows: int = 100,
     use_nullable_dtypes: bool | lib.NoDefault = lib.no_default,
+    keep_whitespace: bool | None | tuple(bool,bool) = (True,False),
+    whitespace_chars: str | None = " \t",
     **kwds,
 ) -> DataFrame | TextFileReader:
     r"""
@@ -1280,6 +1288,14 @@ def read_fwf(
             pyarrow-backed nullable dtypes (using ``pd.ArrowDtype``).
             This is only implemented for the ``pyarrow`` or ``python``
             engines.
+
+        .. versionadded:: 2.0
+
+    keep_whitespace : bool | tuple(bool,bool), default (True,False)
+        Preserve or strip whitespace from fields (Left,Right of column data).
+    whitespace_chars : str, default [space] & [tab]
+        If stripping whitespace, allows user to specify which
+        characters to strip (can be any characters).
 
         .. versionadded:: 2.0
 
@@ -1346,6 +1362,8 @@ def read_fwf(
     kwds["infer_nrows"] = infer_nrows
     kwds["engine"] = "python-fwf"
     kwds["use_nullable_dtypes"] = use_nullable_dtypes
+    kwds["keep_whitespace"] = keep_whitespace
+    kwds["whitespace_chars"] = whitespace_chars
     return _read(filepath_or_buffer, kwds)
 
 
